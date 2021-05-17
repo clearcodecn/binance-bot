@@ -14,16 +14,22 @@
 
 package trade
 
-import "time"
+import (
+	"time"
+)
+
+type floatWrapper struct {
+	f float64
+}
 
 var (
 	DefaultBuyOption = BuyOption{
 		Interval:            1,
-		PriceChange:         0.5,
+		PriceUpChange:       &(&floatWrapper{f: 1}).f,
+		PriceDownChange:     nil,
 		MaxBuy:              4,
 		MoneyPerOrder:       11,
 		MainCoin:            "USDT",
-		BlackList:           blackList,
 		WhiteList:           whiteList,
 		BoughtFile:          "trade.json",
 		BuySameCoinDuration: 1 * time.Minute,
@@ -49,13 +55,18 @@ type Option struct {
 	SellOption   SellOption
 }
 
+// BuyOption defines options for buy a coin
 type BuyOption struct {
 	// Interval we will check price every %s time
 	Interval time.Duration
 
 	// PriceChange the percent of priceChange from the interval start and interval end time.
 	// eg: start at 100, end at 102, and we set 1.0, we will buy it
-	PriceChange float64
+	PriceUpChange *float64
+
+	// PriceDownChange the percent of priceChange from the interval start and interval end time.
+	// eg: start at 100, end at 98, and we set 1.0, we will buy it
+	PriceDownChange *float64
 
 	// MaxBuy max coins we will buy
 	MaxBuy int
@@ -65,9 +76,6 @@ type BuyOption struct {
 
 	// MainCoin is the money unit, like: USDT
 	MainCoin string
-
-	// BlackList we will not buy the coins in the list
-	BlackList []string
 
 	// WhiteList we will only buy the coins in the list
 	WhiteList []string
@@ -79,6 +87,16 @@ type BuyOption struct {
 	BuySameCoinDuration time.Duration
 }
 
+func (b BuyOption) InWhiteList(symbol string) bool {
+	for _, w := range b.WhiteList {
+		if symbol+b.MainCoin == w {
+			return true
+		}
+	}
+	return false
+}
+
+// SellOption defines sell option to sell a coin
 type SellOption struct {
 	// StopLoss once coin's price reach to the price, we will sell it
 	// If we set ForceStopLoss, we will decide to wait for a moment.
@@ -108,6 +126,7 @@ type SellOption struct {
 	ForceStopLoss float64
 }
 
+// SystemOption defines the options for system to running
 type SystemOption struct {
 	LogFile   string
 	AccessKey string
