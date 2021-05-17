@@ -14,7 +14,13 @@
 
 package trade
 
-import "github.com/adshao/go-binance/v2"
+import (
+	"github.com/adshao/go-binance/v2"
+	"github.com/sirupsen/logrus"
+	"net/http"
+	"net/url"
+	"time"
+)
 
 type Trade struct {
 	option Option
@@ -32,6 +38,42 @@ func NewTrade(opts ...Options) *Trade {
 		panic("accessKey or secretKey can't be empty")
 	}
 
+	t := &Trade{}
+	t.option = option
 
+	{
+		var proxyURL *url.URL
+		var err error
+		if option.SystemOption.ProxyURL != "" {
+			proxyURL, err = url.Parse(option.SystemOption.ProxyURL)
+			if err != nil {
+				logrus.WithError(err).Error("failed to parse proxy url, will not use proxy")
+			}
+		}
+
+		var client = &http.Client{
+			Transport: http.DefaultTransport,
+			Timeout:   30 * time.Second,
+		}
+
+		if proxyURL != nil {
+			client.Transport = &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+		}
+
+		bclient := binance.NewClient(option.SystemOption.AccessKey, option.SystemOption.SecretKey)
+		bclient.HTTPClient = client
+		bclient.Debug = option.SystemOption.Debug
+
+		t.client = bclient
+	}
+
+	t.init()
+
+	return t
+}
+
+func (t *Trade) init() {
 
 }

@@ -112,6 +112,7 @@ type SystemOption struct {
 	LogFile   string
 	AccessKey string
 	SecretKey string
+	Debug     bool
 
 	ProxyURL string
 }
