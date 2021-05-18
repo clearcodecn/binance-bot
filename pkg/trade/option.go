@@ -24,15 +24,15 @@ type floatWrapper struct {
 
 var (
 	DefaultBuyOption = BuyOption{
-		Interval:            1,
-		PriceUpChange:       &(&floatWrapper{f: 1}).f,
-		PriceDownChange:     nil,
-		MaxBuy:              4,
-		MoneyPerOrder:       11,
-		MainCoin:            "USDT",
-		WhiteList:           whiteList,
-		BoughtFile:          "trade.json",
-		BuySameCoinDuration: 1 * time.Minute,
+		Interval:              1,
+		PriceUpChange:         &(&floatWrapper{f: 1}).f,
+		PriceDownChange:       nil,
+		MaxBuy:                4,
+		MoneyPerOrder:         11,
+		MainCoin:              "USDT",
+		WhiteList:             whiteList,
+		BoughtFile:            "trade.json",
+		SameCoinBlockDuration: 1 * time.Minute,
 	}
 
 	DefaultSellOption = SellOption{
@@ -83,8 +83,8 @@ type BuyOption struct {
 	// BoughtFile the file we save once we buy a coin.
 	BoughtFile string
 
-	// BuySameCoinDuration that means if we just sell a coin, after how long we can buy it again.
-	BuySameCoinDuration time.Duration
+	// SameCoinBlockDuration that means if we just sell a coin, after how long we can buy it again.
+	SameCoinBlockDuration time.Duration
 }
 
 func (b BuyOption) InWhiteList(symbol string) bool {

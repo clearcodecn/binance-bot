@@ -2,6 +2,7 @@ package trade
 
 import (
 	"context"
+	"sort"
 	"time"
 )
 
@@ -42,13 +43,26 @@ func (t *Trade) watchPrice(ctx context.Context) {
 	}
 }
 
-func (t *Trade) checkingPrice(ctx context.Context, option Option, lastPrice map[string]*SymbolPrice) (map[string]*SymbolPrice, map[string]float64) {
+type symbolPriceChange struct {
+	symbol    string
+	lastPrice float64
+	nowPrice  float64
+	change    float64
+}
+
+func (t *Trade) checkingPrice(ctx context.Context, option Option, lastPrice map[string]*SymbolPrice) (map[string]*SymbolPrice, []*symbolPriceChange) {
+	var changes []*symbolPriceChange
 	nowPrice := t.GetSymbolPrice(ctx, "")
-	volatileCoins := make(map[string]float64)
 	for symbol, pr := range lastPrice {
+		// check if symbol is in white list
 		if !option.BuyOption.InWhiteList(symbol) {
 			continue
 		}
+		// check if symbol in buy blocks
+		if t.isBlock(symbol) {
+			continue
+		}
+
 		now, ok := nowPrice[symbol]
 		if !ok {
 			continue
@@ -68,10 +82,20 @@ func (t *Trade) checkingPrice(ctx context.Context, option Option, lastPrice map[
 			}
 		}
 		if shouldBuy {
-			volatileCoins[symbol] = change
+			changes = append(changes, &symbolPriceChange{
+				symbol:    symbol,
+				lastPrice: pr.Price,
+				nowPrice:  now.Price,
+				change:    change,
+			})
 		}
 	}
-	return nowPrice, volatileCoins
+
+	sort.Slice(changes, func(i, j int) bool {
+		return changes[i].change > changes[j].change
+	})
+
+	return nowPrice, changes
 }
 
 func (t *Trade) checkingTPSL(ctx context.Context, option Option) error {

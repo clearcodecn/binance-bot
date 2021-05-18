@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/adshao/go-binance/v2"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
@@ -39,11 +40,15 @@ type Trade struct {
 
 	logger logrus.FieldLogger
 
-	boughtInfo map[string]*BoughtInfo
+	boughtMutex sync.Mutex
+	boughtInfo  map[string]*BoughtInfo
 
 	sellChan chan *SellBill
 
-	buyChan chan map[string]float64
+	buyChan chan []*symbolPriceChange
+
+	cacheMutex  sync.Mutex
+	boughtCache *lru.Cache
 }
 
 // NewTrade returns Trade object.
@@ -53,7 +58,10 @@ func NewTrade(opts ...Options) *Trade {
 		o(&option)
 	}
 
+	cache, _ := lru.New(1024)
+
 	t := &Trade{}
+	t.boughtCache = cache
 	t.option = option
 	t.boughtInfo = make(map[string]*BoughtInfo)
 	t.sellChan = make(chan *SellBill, 60)
@@ -154,10 +162,6 @@ func (t *Trade) Close() error {
 }
 
 func (t *Trade) runSell(ctx context.Context) {
-
-}
-
-func (t *Trade) runBuy(ctx context.Context) {
 
 }
 

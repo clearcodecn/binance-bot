@@ -1,5 +1,7 @@
 package trade
 
+import "time"
+
 type SellReason int
 
 const (
@@ -25,4 +27,36 @@ type SellBill struct {
 	info        *BoughtInfo
 	Reason      SellReason
 	PriceChange float64
+}
+
+func (t *Trade) isBlock(symbol string) bool {
+	t.cacheMutex.Lock()
+	defer t.cacheMutex.Unlock()
+
+	val, ok := t.boughtCache.Get(symbol)
+	if !ok {
+		return false
+	}
+	ti := val.(time.Time)
+	if ti.After(time.Now()) {
+		return true
+	}
+	t.boughtCache.Remove(symbol)
+	return false
+}
+
+func (t *Trade) addBlock(symbol string) {
+	t.mu.Lock()
+	option := t.option
+	t.mu.Unlock()
+
+	if option.BuyOption.SameCoinBlockDuration == 0 {
+		return
+	}
+
+	expire := time.Now().Add(option.BuyOption.SameCoinBlockDuration)
+
+	t.cacheMutex.Lock()
+	t.boughtCache.Add(symbol, expire)
+	t.cacheMutex.Unlock()
 }

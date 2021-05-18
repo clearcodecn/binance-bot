@@ -38,10 +38,10 @@ func (t *Trade) GetSymbolPrice(ctx context.Context, symbol string) map[string]*S
 }
 
 // Buy buy coin with market price with given number
-func (t *Trade) Buy(ctx context.Context, number float64, coin string) (*binance.CreateOrderResponse, error) {
+func (t *Trade) Buy(ctx context.Context, number float64, symbol string) (*binance.CreateOrderResponse, error) {
 	order, err := t.client.NewCreateOrderService().
 		Quantity(strconv.FormatFloat(number, 'g', -1, 64)).
-		Symbol(coin).
+		Symbol(symbol).
 		Side(binance.SideTypeBuy).
 		Type(binance.OrderTypeMarket).
 		Do(ctx, binance.WithRecvWindow(50000))
@@ -89,6 +89,10 @@ func (t *Trade) GetOrder(ctx context.Context, symbol string, id int64, retry int
 	return nil, err
 }
 
-func (t *Trade) GetExchangeInfo() {
-	t.client.NewExchangeInfoService().Do()
+func (t *Trade) GetExchangeInfo(ctx context.Context, symbols ...string) (*binance.ExchangeInfo, error) {
+	info, err := t.client.NewExchangeInfoService().Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
 }
