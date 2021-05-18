@@ -146,7 +146,6 @@ func (t *Trade) Run(stopChan chan struct{}) error {
 	go func() {
 		<-stopChan
 		cancel()
-
 	}()
 
 	return nil
@@ -161,10 +160,6 @@ func (t *Trade) Close() error {
 	return nil
 }
 
-func (t *Trade) runSell(ctx context.Context) {
-
-}
-
 func (t *Trade) getBoughtInfo() map[string]*BoughtInfo {
 	var info = make(map[string]*BoughtInfo)
 	for k, v := range t.boughtInfo {
@@ -173,4 +168,24 @@ func (t *Trade) getBoughtInfo() map[string]*BoughtInfo {
 		info[k] = &i
 	}
 	return info
+}
+
+func (t *Trade) Option() Option {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	return t.option
+}
+
+func (t *Trade) save() {
+	option := t.Option()
+	if option.BuyOption.BoughtFile != "" {
+		t.boughtMutex.Lock()
+		data, err := json.Marshal(t.boughtInfo)
+		t.boughtMutex.Unlock()
+		if err != nil {
+			return
+		}
+		ioutil.WriteFile(option.BuyOption.BoughtFile, data, 0777)
+	}
 }

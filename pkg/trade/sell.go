@@ -1,6 +1,9 @@
 package trade
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type SellReason int
 
@@ -46,10 +49,7 @@ func (t *Trade) isBlock(symbol string) bool {
 }
 
 func (t *Trade) addBlock(symbol string) {
-	t.mu.Lock()
-	option := t.option
-	t.mu.Unlock()
-
+	option := t.Option()
 	if option.BuyOption.SameCoinBlockDuration == 0 {
 		return
 	}
@@ -59,4 +59,27 @@ func (t *Trade) addBlock(symbol string) {
 	t.cacheMutex.Lock()
 	t.boughtCache.Add(symbol, expire)
 	t.cacheMutex.Unlock()
+}
+
+func (t *Trade) runSell(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case sellBill := <-t.sellChan:
+			number := FloatTrunc(sellBill.info.Volume*0.999, sellBill.info.LotSize)
+			_, err := t.Sell(ctx, sellBill.info.Symbol, number)
+			if err != nil {
+				t.logger.WithError(err).Errorf("failed to symbol=%s win=%f %s", sellBill.info.Symbol, sellBill.PriceChange, sellBill.Reason.String())
+				continue
+			}
+			t.AfterSell(sellBill)
+
+			t.boughtMutex.Lock()
+			delete(t.boughtInfo, sellBill.info.Symbol)
+			t.boughtMutex.Unlock()
+
+			t.addBlock(sellBill.info.Symbol)
+		}
+	}
 }

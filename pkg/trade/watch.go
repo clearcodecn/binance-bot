@@ -7,11 +7,8 @@ import (
 )
 
 func (t *Trade) watchPrice(ctx context.Context) {
-	t.mu.Lock()
-	option := t.option
-	t.mu.Unlock()
-
 	var (
+		option          = t.Option()
 		sellCheckTicker = time.NewTicker(option.SellOption.Interval)
 		buyCheckTicker  = time.NewTicker(option.BuyOption.Interval)
 		lastPrice       map[string]*SymbolPrice
@@ -48,6 +45,7 @@ type symbolPriceChange struct {
 	lastPrice float64
 	nowPrice  float64
 	change    float64
+	volume    float64
 }
 
 func (t *Trade) checkingPrice(ctx context.Context, option Option, lastPrice map[string]*SymbolPrice) (map[string]*SymbolPrice, []*symbolPriceChange) {
@@ -72,12 +70,6 @@ func (t *Trade) checkingPrice(ctx context.Context, option Option, lastPrice map[
 		if option.BuyOption.PriceUpChange != nil {
 			up := *option.BuyOption.PriceUpChange
 			if change > up {
-				shouldBuy = true
-			}
-		}
-		if option.BuyOption.PriceDownChange != nil {
-			down := *option.BuyOption.PriceDownChange
-			if change < 0 && -1*change > down {
 				shouldBuy = true
 			}
 		}

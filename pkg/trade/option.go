@@ -26,7 +26,6 @@ var (
 	DefaultBuyOption = BuyOption{
 		Interval:              1,
 		PriceUpChange:         &(&floatWrapper{f: 1}).f,
-		PriceDownChange:       nil,
 		MaxBuy:                4,
 		MoneyPerOrder:         11,
 		MainCoin:              "USDT",
@@ -63,10 +62,6 @@ type BuyOption struct {
 	// PriceChange the percent of priceChange from the interval start and interval end time.
 	// eg: start at 100, end at 102, and we set 1.0, we will buy it
 	PriceUpChange *float64
-
-	// PriceDownChange the percent of priceChange from the interval start and interval end time.
-	// eg: start at 100, end at 98, and we set 1.0, we will buy it
-	PriceDownChange *float64
 
 	// MaxBuy max coins we will buy
 	MaxBuy int
@@ -139,6 +134,12 @@ type SystemOption struct {
 func WithSellOption(option SellOption) Options {
 	return func(o *Option) {
 		o.SellOption = option
+	}
+}
+
+func WithSystemOption(option SystemOption) Options {
+	return func(o *Option) {
+		o.SystemOption = option
 	}
 }
 

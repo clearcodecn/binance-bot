@@ -32,43 +32,67 @@ func (b *BoughtInfo) GetPrice() float64 {
 }
 
 func (t *Trade) runBuy(ctx context.Context) {
-	for change := range t.buyChan {
-		for _, c := range change {
-			if order, err := t.buySymbol(ctx, c.symbol, c.lastPrice); err != nil {
-				t.logger.WithError(err).Errorf("failed to buy symbol=%s price=%f tp=%f", c.symbol, c.lastPrice, c.change)
-			} else {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case change := <-t.buyChan:
+			option := t.Option()
+			for _, c := range change {
 				t.boughtMutex.Lock()
-
-				executedQuantity, _ := strconv.ParseFloat(order.ExecutedQuantity, 64)
-				cummulativeQuoteQuantity, _ := strconv.ParseFloat(order.CummulativeQuoteQuantity, 64)
-
-				//cummulativeQuoteQuantity / executedQuantity
-
-				t.boughtInfo[c.symbol] = &BoughtInfo{
-					Symbol:                   c.symbol,
-					OrderId:                  order.OrderID,
-					Time:                     time.Now(),
-					Price:                    order.Price,
-					StopLoss:                 nil,
-					ForceStopLoss:            nil,
-					TakeProfit:               0,
-					Volume:                   0,
-					ExecutedQuantity:         executedQuantity,
-					CummulativeQuoteQuantity: cummulativeQuoteQuantity,
-					LotSize:                  0,
-				}
+				count := len(t.boughtInfo)
 				t.boughtMutex.Unlock()
+				if count >= option.BuyOption.MaxBuy {
+					continue
+				}
+				if order, err := t.buySymbol(ctx, c.symbol, c.lastPrice); err != nil {
+					t.logger.WithError(err).Errorf("failed to buy symbol=%s price=%f tp=%f", c.symbol, c.lastPrice, c.change)
+				} else {
+					price, _ := strconv.ParseFloat(order.CummulativeQuoteQuantity, 64)
+					number, _ := strconv.ParseFloat(order.ExecutedQuantity, 64)
+					var (
+						stopLoss      *float64
+						forceStopLoss *float64
+					)
+					if option.SellOption.StopLoss != 0 {
+						v := -1 * option.SellOption.StopLoss
+						stopLoss = &v
+					}
+					if option.SellOption.ForceStopLoss != 0 {
+						v := -1 * option.SellOption.ForceStopLoss
+						forceStopLoss = &v
+					}
+					info := &BoughtInfo{
+						Symbol:                   c.symbol,
+						OrderId:                  order.OrderID,
+						Time:                     time.Now(),
+						StopLoss:                 stopLoss,
+						ForceStopLoss:            forceStopLoss,
+						TakeProfit:               option.SellOption.TakeProfit,
+						Volume:                   order.Number,
+						ExecutedQuantity:         number,
+						CummulativeQuoteQuantity: price,
+						LotSize:                  order.LotSize,
+					}
+					t.boughtMutex.Lock()
+					t.boughtInfo[c.symbol] = info
+					t.boughtMutex.Unlock()
+				}
 			}
+			t.save()
 		}
 	}
 }
 
-// buySymbol buy a symbol
-func (t *Trade) buySymbol(ctx context.Context, symbol string, lastPrice float64) (*binance.Order, error) {
-	t.mu.Lock()
-	option := t.option
-	t.mu.Unlock()
+type Order struct {
+	*binance.Order
+	Number  float64
+	LotSize int
+}
 
+// buySymbol buy a symbol
+func (t *Trade) buySymbol(ctx context.Context, symbol string, lastPrice float64) (*Order, error) {
+	option := t.Option()
 	info, err := t.GetExchangeInfo(ctx, symbol)
 	if err != nil {
 		return nil, err
@@ -128,5 +152,9 @@ func (t *Trade) buySymbol(ctx context.Context, symbol string, lastPrice float64)
 
 	t.AfterBuy(order)
 
-	return order, nil
+	return &Order{
+		Order:   order,
+		Number:  number,
+		LotSize: lotSize,
+	}, nil
 }
