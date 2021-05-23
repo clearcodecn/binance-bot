@@ -27,7 +27,7 @@ func (s SellReason) String() string {
 }
 
 type SellBill struct {
-	info        *BoughtInfo
+	Info        *BoughtInfo
 	Reason      SellReason
 	PriceChange float64
 }
@@ -67,19 +67,21 @@ func (t *Trade) runSell(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case sellBill := <-t.sellChan:
-			number := FloatTrunc(sellBill.info.Volume*0.999, sellBill.info.LotSize)
-			_, err := t.Sell(ctx, sellBill.info.Symbol, number)
+			number := FloatTrunc(sellBill.Info.Volume*0.999, sellBill.Info.LotSize)
+			_, err := t.Sell(ctx, sellBill.Info.Symbol, number)
 			if err != nil {
-				t.logger.WithError(err).Errorf("failed to symbol=%s win=%f %s", sellBill.info.Symbol, sellBill.PriceChange, sellBill.Reason.String())
+				t.logger.WithError(err).Errorf("failed to symbol=%s win=%f %s", sellBill.Info.Symbol, sellBill.PriceChange, sellBill.Reason.String())
 				continue
 			}
-			t.AfterSell(sellBill)
+			if t.AfterSell != nil {
+				go t.AfterSell(sellBill)
+			}
 
 			t.boughtMutex.Lock()
-			delete(t.boughtInfo, sellBill.info.Symbol)
+			delete(t.boughtInfo, sellBill.Info.Symbol)
 			t.boughtMutex.Unlock()
 
-			t.addBlock(sellBill.info.Symbol)
+			t.addBlock(sellBill.Info.Symbol)
 		}
 	}
 }

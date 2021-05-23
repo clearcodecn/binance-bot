@@ -152,7 +152,7 @@ func (t *Trade) checkingTPSL(ctx context.Context, option Option) error {
 		}
 
 		sellInfo := &SellBill{
-			info:        info,
+			Info:        info,
 			Reason:      sellReason,
 			PriceChange: priceChange,
 		}

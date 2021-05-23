@@ -136,7 +136,7 @@ func (t *Trade) buySymbol(ctx context.Context, symbol string, lastPrice float64)
 		number = FloatTrunc(number, lotSize)
 	}
 
-	t.BeforeBuy(symbol, number, lastPrice)
+	//t.BeforeBuy(symbol, number, lastPrice)
 
 	// buy.
 	resp, err := t.Buy(ctx, number, symbol)
@@ -150,8 +150,9 @@ func (t *Trade) buySymbol(ctx context.Context, symbol string, lastPrice float64)
 		return nil, err
 	}
 
-	t.AfterBuy(order)
-
+	if t.AfterBuy != nil {
+		go t.AfterBuy(order)
+	}
 	return &Order{
 		Order:   order,
 		Number:  number,

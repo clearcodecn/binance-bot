@@ -49,6 +49,10 @@ type Trade struct {
 
 	cacheMutex  sync.Mutex
 	boughtCache *lru.Cache
+
+	AfterSell func(info *SellBill)
+
+	AfterBuy func(order *binance.Order)
 }
 
 // NewTrade returns Trade object.
